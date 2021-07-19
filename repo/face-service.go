@@ -3,6 +3,7 @@ package repo
 import (
 	"bytes"
 	"encoding/json"
+	"face-parsing/domain"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -10,48 +11,22 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
 )
 
 type FaceService struct {
-	URL string
+	Url string
 }
 
-type Actress struct {
-	ID           string      `json:"id"`
-	Name         string      `json:"name"`
-	Romanization interface{} `json:"romanization"`
-	Detail       interface{} `json:"detail"`
-	Preview      string      `json:"preview"`
-	Createdat    time.Time   `json:"createdat"`
-	Updatedat    time.Time   `json:"updatedat"`
-}
+func (service *FaceService) GetInfos(limit uint, offset uint) (*domain.GetInfosResponse, error) {
+	if limit == 0 {
+		return nil, errors.New("require limit")
+	}
 
-type ActressWithRecognition struct {
-	Actress
-	Token                 string  `json:"token"`
-	RecognitionPercentage float64 `json:"recognitionPercentage"`
-}
-
-type GetInfosResponse struct {
-	Limit  int `json:"limit"`
-	Offset int `json:"offset"`
-	Count  int `json:"count"`
-	Rows   []Actress
-}
-
-type PostSearchResponse []struct {
-	ActressWithRecognition
-}
-
-type PostInfosResponse struct {
-	ID string `json:"id"`
-}
-
-func (service *FaceService) GetInfos() GetInfosResponse {
-	res, err := http.Get(fmt.Sprintf("%s/faces/infos", service.URL))
+	res, err := http.Get(fmt.Sprintf("%s/faces/infos?limit=%d&offset=%d", service.Url, limit, offset))
 	if err != nil {
 		//yorktodo
 	}
@@ -60,9 +35,28 @@ func (service *FaceService) GetInfos() GetInfosResponse {
 	if err != nil {
 		//yorktodo
 	}
-	var infosResponse GetInfosResponse
+	var infosResponse domain.GetInfosResponse
 	json.Unmarshal(body, &infosResponse)
-	return infosResponse
+	return &infosResponse, nil
+}
+
+func (service *FaceService) GetInfosAllActresses() ([]domain.Actress, error) {
+	actresses := []domain.Actress{}
+	offset := 0
+	offsetIncrease := 1000
+
+	for {
+		GetInfosResponse, err := service.GetInfos(1000, uint(offset))
+		if err != nil {
+			return nil, errors.Wrap(err, "get infos fail")
+		}
+		actresses = append(actresses, GetInfosResponse.Rows...)
+		offset = offset + offsetIncrease
+		if offset >= GetInfosResponse.Count {
+			log.Info("current actress infos count", len(actresses))
+			return actresses, nil
+		}
+	}
 }
 
 func (service *FaceService) createImagePayload(filePath string, keyName string) (*bytes.Buffer, *multipart.Writer, error) {
@@ -81,7 +75,7 @@ func (service *FaceService) createImagePayload(filePath string, keyName string) 
 	return payload, writer, nil
 }
 
-func (service *FaceService) PostSearch(filePath string) (PostSearchResponse, error) {
+func (service *FaceService) PostSearch(filePath string) (domain.PostSearchResponse, error) {
 	payload, writer, err := service.createImagePayload(filePath, "image")
 	if err != nil {
 		//yorktodo
@@ -89,7 +83,7 @@ func (service *FaceService) PostSearch(filePath string) (PostSearchResponse, err
 	if err := writer.Close(); err != nil {
 		//yorktodo
 	}
-	res, err := http.Post(fmt.Sprintf("%s/faces/search", service.URL), writer.FormDataContentType(), payload)
+	res, err := http.Post(fmt.Sprintf("%s/faces/search", service.Url), writer.FormDataContentType(), payload)
 	if err != nil {
 		//yorktodo
 	}
@@ -103,12 +97,12 @@ func (service *FaceService) PostSearch(filePath string) (PostSearchResponse, err
 	if err != nil {
 		//yorktodo
 	}
-	var postSearchResponse PostSearchResponse
+	var postSearchResponse domain.PostSearchResponse
 	json.Unmarshal(body, &postSearchResponse)
 	return postSearchResponse, nil
 }
 
-func (service *FaceService) PostInfo(filePath string, actress Actress) (PostInfosResponse, error) {
+func (service *FaceService) PostInfo(filePath string, actress domain.Actress) (*domain.PostInfosResponse, error) {
 	if actress.Name == "" {
 		//yorktodo
 	}
@@ -130,7 +124,7 @@ func (service *FaceService) PostInfo(filePath string, actress Actress) (PostInfo
 		//yorktodo
 	}
 
-	res, err := http.Post(fmt.Sprintf("%s/faces/info", service.URL), writer.FormDataContentType(), payload)
+	res, err := http.Post(fmt.Sprintf("%s/faces/info", service.Url), writer.FormDataContentType(), payload)
 	if err != nil {
 		fmt.Println("yorkyork", err)
 		//yorktodo
@@ -138,14 +132,50 @@ func (service *FaceService) PostInfo(filePath string, actress Actress) (PostInfo
 	defer res.Body.Close()
 
 	if res.StatusCode == http.StatusInternalServerError {
-		//yorktodo
+		return nil, errors.New("internal error")
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		//yorktodo
 	}
-	var postInfosResponse PostInfosResponse
+	var postInfosResponse domain.PostInfosResponse
 	json.Unmarshal(body, &postInfosResponse)
-	return postInfosResponse, nil
+	return &postInfosResponse, nil
+}
+
+func (service *FaceService) PostFace(filePath string, infoId string) (*domain.PostFaceResponse, error) {
+	if infoId == "" {
+		return nil, errors.New("require infoId")
+	}
+
+	payload, writer, err := service.createImagePayload(filePath, "image")
+	if err != nil {
+		//yorktodo
+	}
+
+	_ = writer.WriteField("infoId", infoId)
+
+	if err := writer.Close(); err != nil {
+		//yorktodo
+	}
+
+	res, err := http.Post(fmt.Sprintf("%s/faces/face", service.Url), writer.FormDataContentType(), payload)
+	if err != nil {
+		fmt.Println("yorkyork", err)
+		//yorktodo
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode == http.StatusInternalServerError {
+		return nil, errors.New("internal error")
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		//yorktodo
+	}
+	var postFaceResponse domain.PostFaceResponse
+	json.Unmarshal(body, &postFaceResponse)
+	return &postFaceResponse, nil
 }

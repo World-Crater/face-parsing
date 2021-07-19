@@ -2,63 +2,69 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"log"
-	"net/http"
-	"os"
-	"sync"
+	"time"
 
-	"github.com/antchfx/htmlquery"
-	"golang.org/x/net/html"
+	log "github.com/sirupsen/logrus"
+
+	"face-parsing/domain"
+	"face-parsing/repo"
+	"face-parsing/usecase"
 )
-
-func downloadImage(url string, imageName string) {
-	req, e := http.NewRequest("GET", url, nil)
-	req.Header.Set("Referer", "http://www.minnano-av.com/actress_list.php?page=1")
-	client := &http.Client{}
-
-	// don't worry about errors
-	response, e := client.Do(req)
-
-	if e != nil {
-		log.Fatal(e)
-	}
-	defer response.Body.Close()
-
-	//open a file for writing
-	file, err := os.Create(fmt.Sprintf("%s/%s.jpg", SAVE_PATH, imageName))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	// Use io.Copy to just dump the response body to the file. This supports huge files
-	_, err = io.Copy(file, response.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("Success!")
-}
 
 const BASE_URL, SAVE_PATH = "http://www.minnano-av.com", "./images"
 
-var wg sync.WaitGroup
-
 func main() {
-	doc, err := htmlquery.LoadURL("http://www.minnano-av.com/actress_list.php?page=1")
-	nodes, err := htmlquery.QueryAll(doc, "//*[@id=\"main-area\"]/section/table/tbody/tr[*]/td[1]/a/img")
-	if err != nil {
-		panic(`not a valid XPath expression.`)
+	// repo
+	faceService := repo.FaceService{
+		Url: "http://face-service:3000",
 	}
+	actressResourceUrl := repo.NewActressResourceUrl("http://www.minnano-av.com/actress_list.php")
 
-	wg.Add(len(nodes))
+	// usecase
+	actressValidator := usecase.NewActressValidator(&faceService)
+	actressStore := usecase.NewActressStore(actressResourceUrl, SAVE_PATH, BASE_URL)
 
-	for index, value := range nodes {
-		fmt.Println(index, value.Attr[0].Val, value.Attr[1].Val)
-		go func(value *html.Node) {
-			defer wg.Done()
-			downloadImage(fmt.Sprintf("%s/%s", BASE_URL, value.Attr[0].Val), value.Attr[1].Val)
-		}(value)
+	// deliver
+	for {
+		for i := 0; i < 10; i++ {
+			log.Info("current page: ", actressResourceUrl.GetUrl())
+
+			getActressesFromResourceUrl, err := actressResourceUrl.GetActressesFromResourceUrl()
+			if err != nil {
+				log.Error("get actresses from resource url fail", err)
+				return
+			}
+
+			for _, resourceInfoFromUrl := range getActressesFromResourceUrl {
+				if actressValidator.IsInActressList(resourceInfoFromUrl.Name) {
+					log.Warn(fmt.Sprintf("%s in actress list", resourceInfoFromUrl.Name))
+					continue
+				}
+				actressStore.SetActress(resourceInfoFromUrl.Name, resourceInfoFromUrl.SubUrlPath)
+				actressStore.DownloadImage()
+				_, err := faceService.PostSearch(actressStore.GetImagePath())
+				if err != nil {
+					log.Warn(fmt.Sprintf("%s can't detect a face", resourceInfoFromUrl.Name))
+					continue
+				}
+				postInfosResponse, err := faceService.PostInfo(actressStore.GetImagePath(), domain.Actress{Name: resourceInfoFromUrl.Name})
+				if err != nil {
+					log.Error("post info fail. error: ", err)
+					return
+				}
+				_, err = faceService.PostFace(actressStore.GetImagePath(), postInfosResponse.ID)
+				if err != nil {
+					log.Error("post face fail. error: ", err)
+					return
+				}
+				log.Info("upload %s to face service", resourceInfoFromUrl.Name)
+				if err := actressStore.DeleteImage(); err != nil {
+					log.Fatal("delete image fail. error: ", err)
+				}
+			}
+			actressResourceUrl.SetNextPage()
+			actressValidator.UpdateActressInfos()
+		}
+		time.Sleep(time.Hour * 24)
 	}
-	wg.Wait()
 }
