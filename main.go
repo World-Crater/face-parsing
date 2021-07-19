@@ -11,7 +11,7 @@ import (
 	"face-parsing/usecase"
 )
 
-const BASE_URL, SAVE_PATH = "http://www.minnano-av.com", "./images"
+const BASE_URL, SAVE_PATH, ACTRESS_UPLOAD_COUNT_MAX = "http://www.minnano-av.com", "./images", 1000
 
 func main() {
 	// repo
@@ -25,8 +25,9 @@ func main() {
 	actressStore := usecase.NewActressStore(actressResourceUrl, SAVE_PATH, BASE_URL)
 
 	// deliver
+	actressUploadCount := 0
 	for {
-		for i := 0; i < 10; i++ {
+		for {
 			log.Info("current page: ", actressResourceUrl.GetUrl())
 
 			getActressesFromResourceUrl, err := actressResourceUrl.GetActressesFromResourceUrl()
@@ -57,11 +58,18 @@ func main() {
 					log.Error("post face fail. error: ", err)
 					return
 				}
-				log.Info(fmt.Sprintf("upload %s to face service", resourceInfoFromUrl.Name))
 				if err := actressStore.DeleteImage(); err != nil {
 					log.Fatal("delete image fail. error: ", err)
 				}
+
+				log.Info(fmt.Sprintf("upload %s to face service", resourceInfoFromUrl.Name))
+				actressUploadCount++
 			}
+			if actressUploadCount >= ACTRESS_UPLOAD_COUNT_MAX {
+				log.Info("uploaded 1000 actresses")
+				break
+			}
+
 			actressResourceUrl.SetNextPage()
 			actressValidator.UpdateActressInfos()
 		}

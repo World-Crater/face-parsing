@@ -26,7 +26,7 @@ func (a *ActressResource) SetNextPage() {
 	if a.Page == 0 {
 		a.Page = 1
 	}
-	a.Page += 1
+	a.Page++
 }
 
 func (a *ActressResource) GetActressesFromResourceUrl() ([]domain.ActressResourceInfo, error) {
