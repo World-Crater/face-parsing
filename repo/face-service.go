@@ -53,7 +53,7 @@ func (service *FaceService) GetInfosAllActresses() ([]domain.Actress, error) {
 		actresses = append(actresses, GetInfosResponse.Rows...)
 		offset = offset + offsetIncrease
 		if offset >= GetInfosResponse.Count {
-			log.Info("current actress infos count", len(actresses))
+			log.Info("current actress infos count: ", len(actresses))
 			return actresses, nil
 		}
 	}
