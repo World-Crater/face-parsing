@@ -6,5 +6,6 @@ RUN cd /src && go build -o app
 # final stage
 FROM alpine
 WORKDIR /app
+RUN mkdir images
 COPY --from=build-env /src/app /app/
 ENTRYPOINT ./app
