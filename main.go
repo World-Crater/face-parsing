@@ -74,5 +74,6 @@ func main() {
 			actressValidator.UpdateActressInfos()
 		}
 		time.Sleep(time.Hour * 24)
+		actressUploadCount = 0
 	}
 }
