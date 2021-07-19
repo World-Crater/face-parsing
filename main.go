@@ -57,7 +57,7 @@ func main() {
 					log.Error("post face fail. error: ", err)
 					return
 				}
-				log.Info("upload %s to face service", resourceInfoFromUrl.Name)
+				log.Info(fmt.Sprintf("upload %s to face service", resourceInfoFromUrl.Name))
 				if err := actressStore.DeleteImage(); err != nil {
 					log.Fatal("delete image fail. error: ", err)
 				}
