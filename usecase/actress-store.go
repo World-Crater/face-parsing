@@ -29,36 +29,38 @@ func (f *ActressStore) SetActress(name string, imageUrlSubPath string) {
 	f.imageUrlSubPath = imageUrlSubPath
 }
 
-func (f ActressStore) DownloadImage() {
+func (f ActressStore) DownloadImage() error {
 	log.Info("download image: ", f.name, f.imageUrlSubPath)
 	startTime := time.Now()
 
-	req, e := http.NewRequest("GET", fmt.Sprintf("%s/%s", f.baseUrl, f.imageUrlSubPath), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/%s", f.baseUrl, f.imageUrlSubPath), nil)
+	if err != nil {
+		return errors.Wrap(err, "new request fail")
+	}
 	req.Header.Set("Referer", f.GetUrl())
 	client := &http.Client{}
 
-	// don't worry about errors
-	response, e := client.Do(req)
-
-	if e != nil {
-		log.Fatal(e)
+	response, err := client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "do request fail")
 	}
 	defer response.Body.Close()
 
 	//open a file for writing
 	file, err := os.Create(fmt.Sprintf("%s/%s.jpg", f.savePath, f.name))
 	if err != nil {
-		log.Fatal(err)
+		return errors.Wrap(err, "open file fail")
 	}
 	defer file.Close()
 
 	// Use io.Copy to just dump the response body to the file. This supports huge files
 	_, err = io.Copy(file, response.Body)
 	if err != nil {
-		log.Fatal(err)
+		return errors.Wrap(err, "copy file from body fail")
 	}
 
 	log.Info("success. cost time: ", time.Since(startTime))
+	return nil
 }
 
 func (f ActressStore) DeleteImage() error {

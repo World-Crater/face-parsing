@@ -37,18 +37,26 @@ func main() {
 			}
 
 			for _, resourceInfoFromUrl := range getActressesFromResourceUrl {
-				if actressValidator.IsInActressList(resourceInfoFromUrl.Name) {
-					log.Warn(fmt.Sprintf("%s in actress list", resourceInfoFromUrl.Name))
+				if actressValidator.IsInActressList(resourceInfoFromUrl.GetFormatName()) {
+					log.Warn(fmt.Sprintf("%s in actress list", resourceInfoFromUrl.GetFormatName()))
 					continue
 				}
-				actressStore.SetActress(resourceInfoFromUrl.Name, resourceInfoFromUrl.SubUrlPath)
-				actressStore.DownloadImage()
+				if actressValidator.IsInCantDetectList(resourceInfoFromUrl.GetFormatName(), resourceInfoFromUrl.SubUrlPath) {
+					log.Warn(fmt.Sprintf("%s in can't detect list", resourceInfoFromUrl.GetFormatName()))
+					continue
+				}
+				actressStore.SetActress(resourceInfoFromUrl.GetFormatName(), resourceInfoFromUrl.SubUrlPath)
+				if err := actressStore.DownloadImage(); err != nil {
+					log.Error("pass. download image fail. error: ", err)
+					continue
+				}
 				_, err := faceService.PostSearch(actressStore.GetImagePath())
 				if err != nil {
-					log.Warn(fmt.Sprintf("%s can't detect a face", resourceInfoFromUrl.Name))
+					log.Warn(fmt.Sprintf("%s can't detect a face", resourceInfoFromUrl.GetFormatName()))
+					actressValidator.AddToCantDetectList(resourceInfoFromUrl.GetFormatName(), resourceInfoFromUrl.SubUrlPath)
 					continue
 				}
-				postInfosResponse, err := faceService.PostInfo(actressStore.GetImagePath(), domain.Actress{Name: resourceInfoFromUrl.Name})
+				postInfosResponse, err := faceService.PostInfo(actressStore.GetImagePath(), domain.Actress{Name: resourceInfoFromUrl.GetFormatName()})
 				if err != nil {
 					log.Error("post info fail. error: ", err)
 					return
@@ -62,7 +70,7 @@ func main() {
 					log.Fatal("delete image fail. error: ", err)
 				}
 
-				log.Info(fmt.Sprintf("upload %s to face service", resourceInfoFromUrl.Name))
+				log.Info(fmt.Sprintf("upload %s to face service", resourceInfoFromUrl.GetFormatName()))
 				actressUploadCount++
 			}
 			if actressUploadCount >= ACTRESS_UPLOAD_COUNT_MAX {
