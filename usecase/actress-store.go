@@ -30,7 +30,7 @@ func (f *ActressStore) SetActress(name string, imageUrlSubPath string) {
 }
 
 func (f ActressStore) DownloadImage() error {
-	log.Info("download image: ", f.name, f.imageUrlSubPath)
+	log.Info(fmt.Sprintf("download %s image to %s", f.name, f.imageUrlSubPath))
 	startTime := time.Now()
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/%s", f.baseUrl, f.imageUrlSubPath), nil)
