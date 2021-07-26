@@ -19,7 +19,7 @@ func main() {
 
 	// repo
 	faceService := repo.FaceService{
-		Url: "http://face-service:3000",
+		Url: viper.GetString("FACE_SERVICE"),
 	}
 	actressResourceUrl := repo.NewActressResourceUrl("http://www.minnano-av.com/actress_list.php", viper.GetUint("RESOURCE_URL_PAGE"))
 
