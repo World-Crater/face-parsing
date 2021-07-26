@@ -5,6 +5,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 
 	"face-parsing/domain"
 	"face-parsing/repo"
@@ -14,11 +15,13 @@ import (
 const BASE_URL, SAVE_PATH, ACTRESS_UPLOAD_COUNT_MAX = "http://www.minnano-av.com", "./images", 1000
 
 func main() {
+	viper.AutomaticEnv()
+
 	// repo
 	faceService := repo.FaceService{
 		Url: "http://face-service:3000",
 	}
-	actressResourceUrl := repo.NewActressResourceUrl("http://www.minnano-av.com/actress_list.php")
+	actressResourceUrl := repo.NewActressResourceUrl("http://www.minnano-av.com/actress_list.php", viper.GetUint("RESOURCE_URL_PAGE"))
 
 	// usecase
 	actressValidator := usecase.NewActressValidator(&faceService)
@@ -73,13 +76,13 @@ func main() {
 				log.Info(fmt.Sprintf("upload %s to face service", resourceInfoFromUrl.GetFormatName()))
 				actressUploadCount++
 			}
+			actressResourceUrl.SetNextPage()
+			actressValidator.UpdateActressInfos()
+
 			if actressUploadCount >= ACTRESS_UPLOAD_COUNT_MAX {
 				log.Info("uploaded 1000 actresses")
 				break
 			}
-
-			actressResourceUrl.SetNextPage()
-			actressValidator.UpdateActressInfos()
 		}
 		time.Sleep(time.Hour * 24)
 		actressUploadCount = 0

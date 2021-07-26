@@ -13,8 +13,11 @@ type ActressResource struct {
 	Page    uint
 }
 
-func NewActressResourceUrl(baseUrl string) domain.ActressResourceService {
-	actressResourceUrl := ActressResource{baseUrl, 1}
+func NewActressResourceUrl(baseUrl string, page uint) domain.ActressResourceService {
+	if page == 0 {
+		page = 1
+	}
+	actressResourceUrl := ActressResource{baseUrl, page}
 	return &actressResourceUrl
 }
 
