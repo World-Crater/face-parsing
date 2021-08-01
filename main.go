@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
@@ -15,6 +17,13 @@ import (
 const BASE_URL, SAVE_PATH, ACTRESS_UPLOAD_COUNT_MAX = "http://www.minnano-av.com", "./images", 1000
 
 func main() {
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(".")
+	err := viper.ReadInConfig()
+	if err != nil {
+		panic(errors.Wrap(err, "Fatal error config"))
+	}
 	viper.AutomaticEnv()
 
 	// repo
@@ -28,7 +37,7 @@ func main() {
 	actressStore := usecase.NewActressStore(actressResourceUrl, SAVE_PATH, BASE_URL)
 
 	// deliver
-	actressUploadCount := 0
+	actressUploadCount := viper.GetInt("UPLOAD_COUNT")
 	for {
 		for {
 			log.Info("current page: ", actressResourceUrl.GetUrl())

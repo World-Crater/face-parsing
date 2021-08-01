@@ -1,1 +1,2 @@
-face-service-host: 'http://localhost:3000'
+FACE_SERVICE: 'http://localhost:3000'
+UPLOAD_COUNT: '1000'
