@@ -28,12 +28,12 @@ func (service *FaceService) GetInfos(limit uint, offset uint) (*domain.GetInfosR
 
 	res, err := http.Get(fmt.Sprintf("%s/faces/infos?limit=%d&offset=%d", service.Url, limit, offset))
 	if err != nil {
-		//yorktodo
+		return nil, errors.Wrap(err, "get req fail")
 	}
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		//yorktodo
+		return nil, errors.Wrap(err, "read body fail")
 	}
 	var infosResponse domain.GetInfosResponse
 	json.Unmarshal(body, &infosResponse)

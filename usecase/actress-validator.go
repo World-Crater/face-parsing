@@ -13,16 +13,18 @@ type ActressValidator struct {
 	cantDetectList map[string]bool
 }
 
-func NewActressValidator(faceService domain.FaceService) ActressValidator {
+func NewActressValidator(faceService domain.FaceService) (*ActressValidator, error) {
 	actressValidator := ActressValidator{
 		faceService: faceService,
 	}
 	actressValidator.actressList = make(map[string]bool)
 	actressValidator.cantDetectList = make(map[string]bool)
 
-	actressValidator.UpdateActressInfos()
+	if err := actressValidator.UpdateActressInfos(); err != nil {
+		return nil, errors.Wrap(err, "update actress infos fail")
+	}
 
-	return actressValidator
+	return &actressValidator, nil
 }
 
 func (a ActressValidator) IsInActressList(actress string) bool {

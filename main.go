@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
@@ -22,7 +20,7 @@ func main() {
 	viper.AddConfigPath(".")
 	err := viper.ReadInConfig()
 	if err != nil {
-		panic(errors.Wrap(err, "Fatal error config"))
+		panic(fmt.Sprintf("fatal error config. %+v\n", err))
 	}
 	viper.AutomaticEnv()
 
@@ -33,7 +31,10 @@ func main() {
 	actressResourceUrl := repo.NewActressResourceUrl("http://www.minnano-av.com/actress_list.php", viper.GetUint("RESOURCE_URL_PAGE"))
 
 	// usecase
-	actressValidator := usecase.NewActressValidator(&faceService)
+	actressValidator, err := usecase.NewActressValidator(&faceService)
+	if err != nil {
+		panic(fmt.Sprintf("new actress validator fail. %+v\n", err))
+	}
 	actressStore := usecase.NewActressStore(actressResourceUrl, SAVE_PATH, BASE_URL)
 
 	// deliver
