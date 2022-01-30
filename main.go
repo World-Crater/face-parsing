@@ -12,9 +12,10 @@ import (
 	"face-parsing/usecase"
 )
 
-const BASE_URL, SAVE_PATH, ACTRESS_UPLOAD_COUNT_MAX = "http://www.minnano-av.com", "./images", 1000
+const BASE_URL, SAVE_PATH = "http://www.minnano-av.com", "./images"
 
 func main() {
+	actressUploadCountMax := viper.GetInt("ACTRESS_UPLOAD_COUNT_MAX")
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
@@ -106,7 +107,7 @@ func main() {
 			actressResourceUrl.SetNextPage()
 			actressValidator.UpdateActressInfos()
 
-			if actressUploadCount >= ACTRESS_UPLOAD_COUNT_MAX {
+			if actressUploadCount >= actressUploadCountMax {
 				log.Info("uploaded 1000 actresses")
 				break
 			}
