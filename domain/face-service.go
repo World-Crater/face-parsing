@@ -25,8 +25,26 @@ type ActressWithRecognition struct {
 	RecognitionPercentage float64 `json:"recognitionPercentage"`
 }
 
+type FaceRectangle struct {
+	Top    int `json:"top"`
+	Left   int `json:"left"`
+	Width  int `json:"width"`
+	Height int `json:"height"`
+}
+
 type PostSearchResponse []struct {
 	ActressWithRecognition
+}
+
+type PostDetectResponse struct {
+	RequestID string `json:"request_id"`
+	TimeUsed  int    `json:"time_used"`
+	Faces     []struct {
+		FaceToken     string        `json:"face_token"`
+		FaceRectangle FaceRectangle `json:"face_rectangle"`
+	} `json:"faces"`
+	ImageID string `json:"image_id"`
+	FaceNum int    `json:"face_num"`
 }
 
 type PostInfosResponse struct {
@@ -41,4 +59,7 @@ type PostFaceResponse struct {
 type FaceService interface {
 	GetInfos(limit uint, offset uint) (*GetInfosResponse, error)
 	GetInfosAllActresses() ([]Actress, error)
+	PostSearch(filePath string) (*PostSearchResponse, error)
+	PostInfo(filePath string, actress Actress) (*PostInfosResponse, error)
+	PostFace(filePath string, infoId string) (*PostFaceResponse, error)
 }

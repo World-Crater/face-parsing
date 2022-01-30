@@ -3,13 +3,21 @@ package usecase
 import (
 	"face-parsing/domain"
 	"fmt"
+	"image"
+	"image/jpeg"
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/oliamb/cutter"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+)
+
+const (
+	cropHeightOffset int = 20
 )
 
 type ActressStore struct {
@@ -22,6 +30,36 @@ type ActressStore struct {
 
 func NewActressStore(actressResourceService domain.ActressResourceService, savePath string, baseUrl string) domain.ActressStoreService {
 	return &ActressStore{ActressResourceService: actressResourceService, savePath: savePath, baseUrl: baseUrl}
+}
+
+func (f *ActressStore) CropImage(imagePath string, faceRectangle domain.FaceRectangle) error {
+	file, err := os.Open(imagePath)
+	if err != nil {
+		return errors.Wrap(err, "open file failed")
+	}
+	defer file.Close()
+	img, _, err := image.Decode(file)
+	if err != nil {
+		return errors.Wrap(err, "decode file to image failed")
+	}
+
+	croppedImg, err := cutter.Crop(img, cutter.Config{
+		Width:  img.Bounds().Dx(),
+		Height: faceRectangle.Top + faceRectangle.Height + cropHeightOffset,
+	})
+	if err != nil {
+		return errors.Wrap(err, "crop image failed")
+	}
+
+	ioWriter, err := os.Create(strings.Replace(imagePath, ".jpg", ".crop.jpg", 1))
+	if err != nil {
+		return errors.Wrap(err, "create io writer failed")
+	}
+	if err := jpeg.Encode(ioWriter, croppedImg, &jpeg.Options{Quality: 100}); err != nil {
+		return errors.Wrap(err, "save image failed")
+	}
+
+	return nil
 }
 
 func (f *ActressStore) SetActress(name string, imageUrlSubPath string) {

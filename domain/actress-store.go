@@ -5,4 +5,5 @@ type ActressStoreService interface {
 	DeleteImage() error
 	GetImagePath() string
 	SetActress(name string, imageUrlSubPath string)
+	CropImage(imagePath string, faceRectangle FaceRectangle) error
 }

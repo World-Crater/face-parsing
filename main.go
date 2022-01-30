@@ -54,31 +54,48 @@ func main() {
 					log.Warn(fmt.Sprintf("%s in actress list", resourceInfoFromUrl.GetFormatName()))
 					continue
 				}
+
 				if actressValidator.IsInCantDetectList(resourceInfoFromUrl.GetFormatName(), resourceInfoFromUrl.SubUrlPath) {
 					log.Warn(fmt.Sprintf("%s in can't detect list", resourceInfoFromUrl.GetFormatName()))
 					continue
 				}
+
 				actressStore.SetActress(resourceInfoFromUrl.GetFormatName(), resourceInfoFromUrl.SubUrlPath)
+
 				if err := actressStore.DownloadImage(); err != nil {
 					log.Error("pass. download image fail. error: ", err)
 					continue
 				}
-				_, err := faceService.PostSearch(actressStore.GetImagePath())
+
+				postDetectResponse, err := faceService.PostDetect(actressStore.GetImagePath())
 				if err != nil {
+					log.Warn(fmt.Sprintf("%s detect failed", resourceInfoFromUrl.GetFormatName()))
+					actressValidator.AddToCantDetectList(resourceInfoFromUrl.GetFormatName(), resourceInfoFromUrl.SubUrlPath)
+					continue
+				}
+				if postDetectResponse.FaceNum == 0 {
 					log.Warn(fmt.Sprintf("%s can't detect a face", resourceInfoFromUrl.GetFormatName()))
 					actressValidator.AddToCantDetectList(resourceInfoFromUrl.GetFormatName(), resourceInfoFromUrl.SubUrlPath)
 					continue
 				}
+
+				if err := actressStore.CropImage(actressStore.GetImagePath(), postDetectResponse.Faces[0].FaceRectangle); err != nil {
+					log.Warn(fmt.Sprintf("%s can't crop image. err: %+v", resourceInfoFromUrl.GetFormatName(), err))
+					actressValidator.AddToCantDetectList(resourceInfoFromUrl.GetFormatName(), resourceInfoFromUrl.SubUrlPath)
+					continue
+				}
+
 				postInfosResponse, err := faceService.PostInfo(actressStore.GetImagePath(), domain.Actress{Name: resourceInfoFromUrl.GetFormatName()})
 				if err != nil {
 					log.Error("post info fail. error: ", err)
 					return
 				}
-				_, err = faceService.PostFace(actressStore.GetImagePath(), postInfosResponse.ID)
-				if err != nil {
+
+				if _, err = faceService.PostFace(actressStore.GetImagePath(), postInfosResponse.ID); err != nil {
 					log.Error("post face fail. error: ", err)
 					return
 				}
+
 				if err := actressStore.DeleteImage(); err != nil {
 					log.Fatal("delete image fail. error: ", err)
 				}

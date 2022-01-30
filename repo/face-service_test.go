@@ -29,8 +29,7 @@ package repo
 // 		"http://localhost:3000",
 // 	}
 // 	result, _ := faceService.PostInfo("./test-1.jpg", Actress{
-// 		Name: "yorkTest3",
+// 		Name: "test3",
 // 	})
 // 	fmt.Println(result)
-// 	//yorktodo
 // }
