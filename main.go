@@ -15,7 +15,6 @@ import (
 const BASE_URL, SAVE_PATH = "http://www.minnano-av.com", "./images"
 
 func main() {
-	actressUploadCountMax := viper.GetInt("ACTRESS_UPLOAD_COUNT_MAX")
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
@@ -25,11 +24,16 @@ func main() {
 	}
 	viper.AutomaticEnv()
 
+	actressUploadCountMax := viper.GetInt("ACTRESS_UPLOAD_COUNT_MAX")
+	actressUploadCount := viper.GetInt("UPLOAD_COUNT")
+	faceServiceURL := viper.GetString("FACE_SERVICE")
+	resourceURLPage := viper.GetUint("RESOURCE_URL_PAGE")
+
 	// repo
 	faceService := repo.FaceService{
-		Url: viper.GetString("FACE_SERVICE"),
+		Url: faceServiceURL,
 	}
-	actressResourceUrl := repo.NewActressResourceUrl("http://www.minnano-av.com/actress_list.php", viper.GetUint("RESOURCE_URL_PAGE"))
+	actressResourceUrl := repo.NewActressResourceUrl("http://www.minnano-av.com/actress_list.php", resourceURLPage)
 
 	// usecase
 	actressValidator, err := usecase.NewActressValidator(&faceService)
@@ -39,7 +43,6 @@ func main() {
 	actressStore := usecase.NewActressStore(actressResourceUrl, SAVE_PATH, BASE_URL)
 
 	// deliver
-	actressUploadCount := viper.GetInt("UPLOAD_COUNT")
 	for {
 		for {
 			log.Info("current page: ", actressResourceUrl.GetUrl())
