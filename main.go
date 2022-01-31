@@ -97,7 +97,12 @@ func main() {
 
 				if _, err = faceService.PostFace(actressStore.GetImagePath(), postInfosResponse.ID); err != nil {
 					log.Error("post face fail. error: ", err)
-					return
+					log.Info("delete info: ", resourceInfoFromUrl.GetFormatName())
+					if err := faceService.DeleteInfo(postInfosResponse.ID); err != nil {
+						log.Error("delete info fail. error: ", err)
+						return
+					}
+					continue
 				}
 
 				if err := actressStore.DeleteImage(); err != nil {

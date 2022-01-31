@@ -135,6 +135,25 @@ func (service *FaceService) PostSearch(filePath string) (*domain.PostSearchRespo
 	return &postSearchResponse, nil
 }
 
+func (service *FaceService) DeleteInfo(infoID string) error {
+	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/faces/info/%s", service.Url, infoID), nil)
+	if err != nil {
+		return errors.Wrap(err, "create delete request")
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "delete info failed")
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusNoContent {
+		return errors.New(fmt.Sprintf("get %d error", res.StatusCode))
+	}
+
+	return nil
+}
+
 func (service *FaceService) PostInfo(filePath string, actress domain.Actress) (*domain.PostInfosResponse, error) {
 	if actress.Name == "" {
 		return nil, errors.New("actress name is empty")

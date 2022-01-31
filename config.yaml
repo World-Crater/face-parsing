@@ -1,3 +1,3 @@
-FACE_SERVICE: 'http://localhost:3000'
+FACE_SERVICE: 'http://localhost:6000'
 UPLOAD_COUNT: '1'
 ACTRESS_UPLOAD_COUNT_MAX: '10000'
