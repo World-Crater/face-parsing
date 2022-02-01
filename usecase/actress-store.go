@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/oliamb/cutter"
@@ -21,15 +20,37 @@ const (
 )
 
 type ActressStore struct {
-	name            string
-	imageUrlSubPath string
-	baseUrl         string
-	savePath        string
+	name     string
+	imageURL string
+	baseUrl  string
+	savePath string
 	domain.ActressResourceService
+	domain.FaceService
 }
 
-func NewActressStore(actressResourceService domain.ActressResourceService, savePath string, baseUrl string) domain.ActressStoreService {
-	return &ActressStore{ActressResourceService: actressResourceService, savePath: savePath, baseUrl: baseUrl}
+func NewActressStore(actressResourceService domain.ActressResourceService, faceService domain.FaceService, savePath string, baseUrl string) domain.ActressStoreService {
+	return &ActressStore{
+		ActressResourceService: actressResourceService,
+		savePath:               savePath,
+		baseUrl:                baseUrl,
+		FaceService:            faceService,
+	}
+}
+
+func (a *ActressStore) DetectImageThenCropImage(actressName string) error {
+	postDetectResponse, err := a.FaceService.PostDetect(a.GetImagePath())
+	if err != nil {
+		return errors.New(fmt.Sprintf("%s detect failed", actressName))
+	}
+	if postDetectResponse.FaceNum == 0 {
+		return errors.New(fmt.Sprintf("%s can't detect a face", actressName))
+	}
+
+	if err := a.CropImage(a.GetImagePath(), postDetectResponse.Faces[0].FaceRectangle); err != nil {
+		return errors.New(fmt.Sprintf("%s can't crop image. err: %+v", actressName, err))
+	}
+
+	return nil
 }
 
 func (f *ActressStore) CropImage(imagePath string, faceRectangle domain.FaceRectangle) error {
@@ -51,7 +72,7 @@ func (f *ActressStore) CropImage(imagePath string, faceRectangle domain.FaceRect
 		return errors.Wrap(err, "crop image failed")
 	}
 
-	ioWriter, err := os.Create(strings.Replace(imagePath, ".jpg", ".crop.jpg", 1))
+	ioWriter, err := os.Create(imagePath)
 	if err != nil {
 		return errors.Wrap(err, "create io writer failed")
 	}
@@ -64,14 +85,19 @@ func (f *ActressStore) CropImage(imagePath string, faceRectangle domain.FaceRect
 
 func (f *ActressStore) SetActress(name string, imageUrlSubPath string) {
 	f.name = name
-	f.imageUrlSubPath = imageUrlSubPath
+	f.imageURL = fmt.Sprintf("%s/%s", f.baseUrl, imageUrlSubPath)
+}
+
+func (f *ActressStore) SetActressWithImageURL(name, url string) {
+	f.name = name
+	f.imageURL = url
 }
 
 func (f ActressStore) DownloadImage() error {
-	log.Info(fmt.Sprintf("download %s image to %s", f.name, f.imageUrlSubPath))
+	log.Info(fmt.Sprintf("download %s image to %s", f.name, f.imageURL))
 	startTime := time.Now()
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/%s", f.baseUrl, f.imageUrlSubPath), nil)
+	req, err := http.NewRequest("GET", f.imageURL, nil)
 	if err != nil {
 		return errors.Wrap(err, "new request fail")
 	}

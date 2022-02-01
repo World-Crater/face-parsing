@@ -44,7 +44,7 @@ func (a *ActressValidator) AddToCantDetectList(name string, subUrlPath string) {
 }
 
 func (a *ActressValidator) UpdateActressInfos() error {
-	getInfosAllActressesResponse, err := a.faceService.GetInfosAllActresses()
+	getInfosAllActressesResponse, err := a.faceService.GetInfosAllActresses(1000, -1)
 	if err != nil {
 		return errors.Wrap(err, "get infos all actresses fail")
 	}

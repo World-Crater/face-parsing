@@ -46,19 +46,24 @@ func (service *FaceService) GetInfos(limit uint, offset uint) (*domain.GetInfosR
 	return &infosResponse, nil
 }
 
-func (service *FaceService) GetInfosAllActresses() ([]domain.Actress, error) {
+func (service *FaceService) GetInfosAllActresses(limit, count int) ([]domain.Actress, error) {
 	actresses := []domain.Actress{}
 	offset := 0
-	offsetIncrease := 1000
+	if limit == -1 {
+		limit = 1000
+	}
 
 	for {
-		GetInfosResponse, err := service.GetInfos(1000, uint(offset))
+		GetInfosResponse, err := service.GetInfos(uint(limit), uint(offset))
 		if err != nil {
 			return nil, errors.Wrap(err, "get infos fail")
 		}
+		if count == -1 {
+			count = GetInfosResponse.Count
+		}
 		actresses = append(actresses, GetInfosResponse.Rows...)
-		offset = offset + offsetIncrease
-		if offset >= GetInfosResponse.Count {
+		offset = offset + limit
+		if offset >= count {
 			log.Info("current actress infos count: ", len(actresses))
 			return actresses, nil
 		}
@@ -195,6 +200,35 @@ func (service *FaceService) PostInfo(filePath string, actress domain.Actress) (*
 	var postInfosResponse domain.PostInfosResponse
 	json.Unmarshal(body, &postInfosResponse)
 	return &postInfosResponse, nil
+}
+
+func (service *FaceService) PutInfo(infoID, filePath string) error {
+	payload, writer, err := service.createImagePayload(filePath, "preview")
+	if err != nil {
+		return errors.Wrap(err, "create image payload failed")
+	}
+	if err := writer.Close(); err != nil {
+		return errors.Wrap(err, "close writer failed")
+	}
+
+	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/faces/info/%s", service.Url, infoID), payload)
+	if err != nil {
+		return errors.Wrap(err, "create delete request")
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "delete info failed")
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusNoContent {
+		return errors.New(fmt.Sprintf("put info error. status %d", res.StatusCode))
+	}
+
+	return nil
 }
 
 func (service *FaceService) PostFace(filePath string, infoId string) (*domain.PostFaceResponse, error) {
