@@ -5,12 +5,9 @@ import (
 	"encoding/json"
 	"face-parsing/domain"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
-	"os"
-	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
 
@@ -70,24 +67,22 @@ func (service *FaceService) GetInfosAllActresses(limit, count int) ([]domain.Act
 	}
 }
 
-func (service *FaceService) createImagePayload(filePath string, keyName string) (*bytes.Buffer, *multipart.Writer, error) {
+func (service *FaceService) createImagePayload(imageBuffer []byte, keyName string) (*bytes.Buffer, *multipart.Writer, error) {
 	payload := &bytes.Buffer{}
 	writer := multipart.NewWriter(payload)
-	file, err := os.Open(filePath)
+	imagePart, err := writer.CreateFormFile(keyName, keyName)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "file open fail")
+		return nil, nil, errors.Wrap(err, "create form file failed")
 	}
-	defer file.Close()
-	part1, err := writer.CreateFormFile(keyName, filepath.Base(filePath))
-	_, err = io.Copy(part1, file)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "io copy fail")
+
+	if _, err = imagePart.Write(imageBuffer); err != nil {
+		return nil, nil, errors.Wrap(err, "io copy failed")
 	}
 	return payload, writer, nil
 }
 
-func (service *FaceService) PostDetect(filePath string) (*domain.PostDetectResponse, error) {
-	payload, writer, err := service.createImagePayload(filePath, "image")
+func (service *FaceService) PostDetect(imageBuffer []byte) (*domain.PostDetectResponse, error) {
+	payload, writer, err := service.createImagePayload(imageBuffer, "image")
 	if err != nil {
 		return nil, errors.Wrap(err, "create image payload failed")
 	}
@@ -113,8 +108,8 @@ func (service *FaceService) PostDetect(filePath string) (*domain.PostDetectRespo
 	return &postDetectResponse, nil
 }
 
-func (service *FaceService) PostSearch(filePath string) (*domain.PostSearchResponse, error) {
-	payload, writer, err := service.createImagePayload(filePath, "image")
+func (service *FaceService) PostSearch(imageBuffer []byte) (*domain.PostSearchResponse, error) {
+	payload, writer, err := service.createImagePayload(imageBuffer, "image")
 	if err != nil {
 		return nil, errors.Wrap(err, "create image payload failed")
 	}
@@ -159,12 +154,12 @@ func (service *FaceService) DeleteInfo(infoID string) error {
 	return nil
 }
 
-func (service *FaceService) PostInfo(filePath string, actress domain.Actress) (*domain.PostInfosResponse, error) {
+func (service *FaceService) PostInfo(imageBuffer []byte, actress domain.Actress) (*domain.PostInfosResponse, error) {
 	if actress.Name == "" {
 		return nil, errors.New("actress name is empty")
 	}
 
-	payload, writer, err := service.createImagePayload(filePath, "preview")
+	payload, writer, err := service.createImagePayload(imageBuffer, "preview")
 	if err != nil {
 		return nil, errors.Wrap(err, "create image payload failed")
 	}
@@ -202,8 +197,8 @@ func (service *FaceService) PostInfo(filePath string, actress domain.Actress) (*
 	return &postInfosResponse, nil
 }
 
-func (service *FaceService) PutInfo(infoID, filePath string) error {
-	payload, writer, err := service.createImagePayload(filePath, "preview")
+func (service *FaceService) PutInfo(infoID string, imageBuffer []byte) error {
+	payload, writer, err := service.createImagePayload(imageBuffer, "preview")
 	if err != nil {
 		return errors.Wrap(err, "create image payload failed")
 	}
@@ -231,12 +226,12 @@ func (service *FaceService) PutInfo(infoID, filePath string) error {
 	return nil
 }
 
-func (service *FaceService) PostFace(filePath string, infoId string) (*domain.PostFaceResponse, error) {
+func (service *FaceService) PostFace(imageBuffer []byte, infoId string) (*domain.PostFaceResponse, error) {
 	if infoId == "" {
 		return nil, errors.New("require infoId")
 	}
 
-	payload, writer, err := service.createImagePayload(filePath, "image")
+	payload, writer, err := service.createImagePayload(imageBuffer, "image")
 	if err != nil {
 		return nil, errors.Wrap(err, "create image payload failed")
 	}

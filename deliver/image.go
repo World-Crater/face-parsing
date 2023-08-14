@@ -43,7 +43,7 @@ func (i ImageDeliver) CropToFixR18Image(limit, offsetMax int) error {
 			continue
 		}
 
-		if err := i.FaceService.PutInfo(actress.ID, i.ActressStoreService.GetImagePath()); err != nil {
+		if err := i.FaceService.PutInfo(actress.ID, i.ActressStoreService.GetImage()); err != nil {
 			log.Errorf("pass. update info fail. error: %+v\n", err)
 			continue
 		}
@@ -93,13 +93,15 @@ func (i ImageDeliver) AddActress(
 					continue
 				}
 
-				postInfosResponse, err := faceService.PostInfo(actressStore.GetImagePath(), domain.Actress{Name: resourceInfoFromUrl.GetFormatName()})
+				log.Info("post info: " + resourceInfoFromUrl.GetFormatName())
+
+				postInfosResponse, err := faceService.PostInfo(actressStore.GetCropImage(), domain.Actress{Name: resourceInfoFromUrl.GetFormatName()})
 				if err != nil {
 					log.Error("post info fail. error: ", err)
 					return errors.Wrap(err, "post info fail")
 				}
 
-				if _, err = faceService.PostFace(actressStore.GetImagePath(), postInfosResponse.ID); err != nil {
+				if _, err = faceService.PostFace(actressStore.GetCropImage(), postInfosResponse.ID); err != nil {
 					log.Error("post face fail. error: ", err)
 					log.Info("delete info: ", resourceInfoFromUrl.GetFormatName())
 					if err := faceService.DeleteInfo(postInfosResponse.ID); err != nil {
@@ -109,10 +111,6 @@ func (i ImageDeliver) AddActress(
 					continue
 				}
 
-				if err := actressStore.DeleteImage(); err != nil {
-					log.Fatal("delete image fail. error: ", err)
-				}
-
 				log.Info(fmt.Sprintf("upload %s to face service", resourceInfoFromUrl.GetFormatName()))
 				actressUploadCount++
 			}
@@ -120,7 +118,7 @@ func (i ImageDeliver) AddActress(
 			actressValidator.UpdateActressInfos()
 
 			if actressUploadCount >= actressUploadCountMax {
-				log.Info("uploaded 1000 actresses")
+				log.Info("uploaded " + fmt.Sprint(actressUploadCount) + " actresses")
 				break
 			}
 		}

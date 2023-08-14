@@ -59,10 +59,10 @@ type PostFaceResponse struct {
 type FaceService interface {
 	GetInfos(limit uint, offset uint) (*GetInfosResponse, error)
 	GetInfosAllActresses(limit, offsetMax int) ([]Actress, error)
-	PostSearch(filePath string) (*PostSearchResponse, error)
-	PostInfo(filePath string, actress Actress) (*PostInfosResponse, error)
-	PutInfo(infoID, filePath string) error
-	PostFace(filePath string, infoId string) (*PostFaceResponse, error)
-	PostDetect(filePath string) (*PostDetectResponse, error)
+	PostSearch(imageBuffer []byte) (*PostSearchResponse, error)
+	PostInfo(imageBuffer []byte, actress Actress) (*PostInfosResponse, error)
+	PutInfo(infoID string, imageBuffer []byte) error
+	PostFace(imageBuffer []byte, infoId string) (*PostFaceResponse, error)
+	PostDetect(imageBuffer []byte) (*PostDetectResponse, error)
 	DeleteInfo(infoID string) error
 }
